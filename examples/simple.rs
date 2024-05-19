@@ -70,14 +70,11 @@ impl Default for MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My egui Application");
             example_graph(&mut self.ctx, &mut self.links, ui);
         });
-
-        // Resize the native window to be just the size we need it to be:
-        frame.set_window_size(ctx.used_size());
     }
 }
 
