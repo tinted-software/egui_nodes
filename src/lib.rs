@@ -166,7 +166,7 @@ impl Context {
             );
             {
                 let ui = &mut ui;
-                let screen_rect = ui.ctx().input(|input| input.screen_rect());
+                let screen_rect = ui.ctx().screen_rect();
                 ui.set_clip_rect(self.canvas_rect_screen_space.intersect(screen_rect));
                 ui.painter().rect_filled(
                     self.canvas_rect_screen_space,
@@ -198,33 +198,32 @@ impl Context {
                 ui.id().with("Input"),
                 egui::Sense::click_and_drag(),
             );
-            ui.ctx().input(|io| {
-                let mouse_pos = if let Some(mouse_pos) = response.hover_pos() {
-                    self.mouse_in_canvas = true;
-                    mouse_pos
-                } else {
-                    self.mouse_in_canvas = false;
-                    self.mouse_pos
-                };
-                self.mouse_delta = mouse_pos - self.mouse_pos;
-                self.mouse_pos = mouse_pos;
-                let left_mouse_clicked = io.pointer.button_down(egui::PointerButton::Primary);
-                self.left_mouse_released =
-                    (self.left_mouse_clicked || self.left_mouse_dragging) && !left_mouse_clicked;
-                self.left_mouse_dragging =
-                    (self.left_mouse_clicked || self.left_mouse_dragging) && left_mouse_clicked;
-                self.left_mouse_clicked =
-                    left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
+            let io = ui.ctx().input(|i| i.clone());
+            let mouse_pos = if let Some(mouse_pos) = response.hover_pos() {
+                self.mouse_in_canvas = true;
+                mouse_pos
+            } else {
+                self.mouse_in_canvas = false;
+                self.mouse_pos
+            };
+            self.mouse_delta = mouse_pos - self.mouse_pos;
+            self.mouse_pos = mouse_pos;
+            let left_mouse_clicked = io.pointer.button_down(egui::PointerButton::Primary);
+            self.left_mouse_released =
+                (self.left_mouse_clicked || self.left_mouse_dragging) && !left_mouse_clicked;
+            self.left_mouse_dragging =
+                (self.left_mouse_clicked || self.left_mouse_dragging) && left_mouse_clicked;
+            self.left_mouse_clicked =
+                left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
 
-                let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&io.modifiers)
-                    || self.io.alt_mouse_button.map_or(false, |x| io.pointer.button_down(x));
-                self.alt_mouse_dragging =
-                    (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
-                self.alt_mouse_clicked =
-                    alt_mouse_clicked && !(self.alt_mouse_clicked || self.alt_mouse_dragging);
-                self.link_detatch_with_modifier_click =
-                    self.io.link_detatch_with_modifier_click.is_active(&io.modifiers);
-            });
+            let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&io.modifiers)
+                || self.io.alt_mouse_button.map_or(false, |x| io.pointer.button_down(x));
+            self.alt_mouse_dragging =
+                (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
+            self.alt_mouse_clicked =
+                alt_mouse_clicked && !(self.alt_mouse_clicked || self.alt_mouse_dragging);
+            self.link_detatch_with_modifier_click =
+                self.io.link_detatch_with_modifier_click.is_active(&io.modifiers);
             {
                 let ui = &mut ui;
                 if self.mouse_in_canvas {
