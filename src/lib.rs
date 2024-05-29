@@ -487,7 +487,7 @@ impl Context {
 }
 
 impl Context {
-    fn add_node<'a>(
+    fn add_node(
         &mut self,
         idx: usize,
         NodeConstructor {
@@ -496,7 +496,7 @@ impl Context {
             attributes,
             pos: _,
             args,
-        }: NodeConstructor<'a>,
+        }: NodeConstructor<'_>,
         ui: &mut egui::Ui,
     ) {
         let node = &mut self.nodes.pool[idx];

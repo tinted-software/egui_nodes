@@ -110,6 +110,7 @@ impl Default for NodeData {
 /// This is used so that the nodes can be rendered in the context depth order
 #[derive(Derivative, Default)]
 #[derivative(Debug)]
+#[allow(clippy::type_complexity)]
 pub struct NodeConstructor<'a> {
     //node: &'a mut NodeData,
     pub(crate) id: usize,
@@ -126,7 +127,7 @@ pub struct NodeConstructor<'a> {
     pub(crate) args: NodeArgs,
 }
 
-impl<'a, 'b> NodeConstructor<'a> {
+impl<'a> NodeConstructor<'a> {
     /// Create a new node to be displayed in a Context.
     /// id should be the same accross frames and should not be the same as any other currently used nodes
     pub fn new(id: usize, args: NodeArgs) -> Self {

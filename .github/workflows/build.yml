@@ -1,0 +1,20 @@
+name: test suite
+on:
+  push:
+    branches: main
+  pull_request:
+
+jobs:
+  test:
+    name: Build and Check 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy, rustfmt
+      - name: Build and test
+        run: cargo test --all-features
+      - name: Lint
+        run: cargo clippy -- -Dwarnings
