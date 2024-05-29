@@ -536,7 +536,7 @@ impl Context {
         }
         node.outline_shape.replace(outline_shape);
         node.rect = response.response.rect.expand2(node.layout_style.padding);
-        if response.response.hovered() {
+        if response.response.hovered() || ui.rect_contains_pointer(node.rect) {
             self.node_indices_overlapping_with_mouse.push(idx);
         }
     }
