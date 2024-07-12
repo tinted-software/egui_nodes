@@ -1,6 +1,6 @@
 [package]
 name = "tinted_egui_nodes"
-version = "0.2.0"
+version = "0.1.0"
 authors = ["Theo Paris <theo@tinted.dev>", "Cameron Haigh <cgwhaigh@gmail.com>"]
 edition = "2021"
 license = "MIT"
