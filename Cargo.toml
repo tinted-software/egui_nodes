@@ -1,10 +1,14 @@
 [package]
-name = "egui_nodes"
-version = "0.1.6"
-authors = ["Cameron Haigh <cgwhaigh@gmail.com>"]
-edition = "2018"
+name = "tinted_egui_nodes"
+version = "0.2.0"
+authors = ["Theo Paris <theo@tinted.dev>", "Cameron Haigh <cgwhaigh@gmail.com>"]
+edition = "2021"
 license = "MIT"
 description = "A Egui port of https://github.com/Nelarius/imnodes"
+
+[lib]
+name = "egui_nodes"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
