@@ -1,6 +1,7 @@
 use eframe::{self, egui};
 use egui_nodes::{Context, LinkArgs, NodeArgs, NodeConstructor, PinArgs, PinShape};
 
+#[derive(Default)]
 struct MyApp {
     ctx: Context,
     links: Vec<(usize, usize)>,
@@ -60,15 +61,6 @@ pub fn example_graph(ctx: &mut Context, links: &mut Vec<(usize, usize)>, ui: &mu
     }
 }
 
-impl Default for MyApp {
-    fn default() -> Self {
-        Self {
-            ctx: Context::default(),
-            links: Vec::new(),
-        }
-    }
-}
-
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -82,7 +74,7 @@ fn main() {
     eframe::run_native(
         "My egui app",
         eframe::NativeOptions::default(),
-        Box::new(|_cc| Box::<MyApp>::default()),
+        Box::new(|_cc| Ok(Box::<MyApp>::default())),
     )
     .unwrap();
 }

@@ -163,6 +163,7 @@ impl Context {
             let mut ui = ui.child_ui(
                 self.canvas_rect_screen_space,
                 egui::Layout::top_down(egui::Align::Center),
+                None,
             );
             {
                 let ui = &mut ui;
