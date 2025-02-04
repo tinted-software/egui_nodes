@@ -219,7 +219,7 @@ impl Context {
                 left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
 
             let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&io.modifiers)
-                || self.io.alt_mouse_button.map_or(false, |x| io.pointer.button_down(x));
+                || self.io.alt_mouse_button.is_some_and(|x| io.pointer.button_down(x));
             self.alt_mouse_dragging =
                 (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
             self.alt_mouse_clicked =
@@ -267,6 +267,7 @@ impl Context {
                 self.canvas_rect_screen_space,
                 0.0,
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
+                egui::StrokeKind::Inside,
             );
             response
         }
@@ -861,6 +862,7 @@ impl Context {
                     node.rect,
                     node.layout_style.corner_rounding,
                     (node.layout_style.border_thickness, node.color_style.outline),
+                    egui::StrokeKind::Inside,
                 ),
             );
         }
@@ -957,7 +959,7 @@ impl Context {
             return false;
         }
 
-        if duplicate_link.map_or(false, |x| Some(x) != self.snap_link_idx) {
+        if duplicate_link.is_some_and(|x| Some(x) != self.snap_link_idx) {
             return false;
         }
         true
@@ -1048,7 +1050,13 @@ impl Context {
                 let box_selector_color = self.style.colors[ColorStyle::BoxSelector as usize];
                 let box_selector_outline =
                     self.style.colors[ColorStyle::BoxSelectorOutline as usize];
-                ui.painter().rect(rect, 0.0, box_selector_color, (1.0, box_selector_outline));
+                ui.painter().rect(
+                    rect,
+                    0.0,
+                    box_selector_color,
+                    (1.0, box_selector_outline),
+                    egui::StrokeKind::Inside,
+                );
 
                 if self.left_mouse_released {
                     let mut idxs = Vec::with_capacity(self.selected_node_indices.len());
@@ -1085,7 +1093,7 @@ impl Context {
                     )
                 });
 
-                let should_snap = self.hovered_pin_index.map_or(false, |idx| {
+                let should_snap = self.hovered_pin_index.is_some_and(|idx| {
                     let start_pin =
                         &self.pins.pool[self.click_interaction_state.link_creation.start_pin_idx];
                     self.should_link_snap_to_pin(start_pin, idx, maybe_duplicate_link_idx)
@@ -1095,7 +1103,7 @@ impl Context {
                     .click_interaction_state
                     .link_creation
                     .end_pin_index
-                    .map_or(false, |idx| self.hovered_pin_index != Some(idx));
+                    .is_some_and(|idx| self.hovered_pin_index != Some(idx));
 
                 if snapping_pin_changed && self.snap_link_idx.is_some() {
                     self.begin_link_detach(
@@ -1127,7 +1135,7 @@ impl Context {
                     self.style.colors[ColorStyle::Link as usize],
                 )));
 
-                let link_creation_on_snap = self.hovered_pin_index.map_or(false, |idx| {
+                let link_creation_on_snap = self.hovered_pin_index.is_some_and(|idx| {
                     (self.pins.pool[idx].flags & AttributeFlags::EnableLinkCreationOnSnap as usize)
                         != 0
                 });

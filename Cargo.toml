@@ -2,7 +2,7 @@
 name = "tinted_egui_nodes"
 version = "0.1.0"
 authors = ["Theo Paris <theo@tinted.dev>", "Cameron Haigh <cgwhaigh@gmail.com>"]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "A Egui port of https://github.com/Nelarius/imnodes"
 
@@ -13,8 +13,8 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui = "0.29.0"
+egui = "0.31.1"
 derivative = "2.2.0"
 
 [dev-dependencies]
-eframe = "0.29.0"
+eframe = "0.31.1"

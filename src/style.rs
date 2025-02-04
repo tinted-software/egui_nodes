@@ -261,6 +261,7 @@ impl Style {
                     ),
                     0.0,
                     (self.pin_line_thickness, pin_color),
+                    egui::StrokeKind::Inside,
                 ),
             ),
             PinShape::QuadFilled => painter.set(
