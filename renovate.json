@@ -1,11 +1,17 @@
 {
-  "extends": [
-    "config:best-practices",
-    "group:allNonMajor"
-  ],
-  "forkProcessing": "enabled",
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
   "dependencyDashboard": true,
-  "schedule": [
-    "every weekend"
+  "schedule": ["every weekend"],
+  "packageRules": [
+    {
+      "description": "Automerge non-major updates",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
   ]
 }
