@@ -1,7 +1,8 @@
 name: test suite
 on:
   push:
-    branches: main
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -12,7 +13,7 @@ jobs:
       - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly
+          toolchain: stable
           components: clippy, rustfmt
       - name: Build and test
         run: cargo test --all-features
