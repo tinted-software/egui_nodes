@@ -17,4 +17,4 @@ egui = "0.31.1"
 derivative = "2.2.0"
 
 [dev-dependencies]
-eframe = "0.31.1"
+eframe = "0.32.0"
