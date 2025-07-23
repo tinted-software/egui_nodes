@@ -510,7 +510,7 @@ impl Context {
         let node_size = node.size;
         let title_space = node.layout_style.padding.y;
 
-        let response = ui.allocate_new_ui(
+        let response = ui.scope_builder(
             UiBuilder::new().max_rect(egui::Rect::from_min_size(
                 self.grid_space_to_screen_space(node_origin),
                 node_size,
