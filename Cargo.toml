@@ -10,11 +10,9 @@ description = "A Egui port of https://github.com/Nelarius/imnodes"
 name = "egui_nodes"
 path = "src/lib.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-egui = "0.32.0"
+egui = "0.33.3"
 derivative = "2.2.0"
 
 [dev-dependencies]
-eframe = "0.32.0"
+eframe = "0.33.3"
