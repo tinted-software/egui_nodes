@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/tinted-software/egui_nodes/compare/v0.1.1...v0.1.2) - 2026-02-14
+
+### Other
+
+- *(deps)* update to egui 0.33.3
+- *(deps)* update release-plz/action digest to 52440b5
+- *(deps)* update actions/checkout action to v6
+
 ## [0.1.1](https://github.com/tinted-software/egui_nodes/compare/v0.1.0...v0.1.1) - 2025-08-09
 
 ### Fixed
