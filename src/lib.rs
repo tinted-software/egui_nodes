@@ -30,7 +30,7 @@
 //!         links.iter().enumerate().map(|(i, (start, end))| (i, *start, *end, LinkArgs::default())),
 //!         ui
 //!     );
-//!     
+//!
 //!     // remove destroyed links
 //!     if let Some(idx) = ctx.link_destroyed() {
 //!         links.remove(idx);
@@ -168,7 +168,7 @@ impl Context {
             );
             {
                 let ui = &mut ui;
-                let screen_rect = ui.ctx().screen_rect();
+                let screen_rect = ui.ctx().content_rect();
                 ui.set_clip_rect(self.canvas_rect_screen_space.intersect(screen_rect));
                 ui.painter().rect_filled(
                     self.canvas_rect_screen_space,

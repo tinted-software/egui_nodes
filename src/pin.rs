@@ -23,33 +23,25 @@ impl PinArgs {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(Default, PartialEq, Clone, Copy, Debug)]
 pub(crate) enum AttributeType {
+    #[default]
     None,
     Input,
     Output,
 }
-impl Default for AttributeType {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Controls the shape of an attribut pin.
 /// Triangle and TriangleFilled are not currently implemented and will not be drawn
-#[derive(Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug)]
 pub enum PinShape {
     Circle,
+    #[default]
     CircleFilled,
     Triangle,
     TriangleFilled,
     Quad,
     QuadFilled,
-}
-impl Default for PinShape {
-    fn default() -> Self {
-        Self::CircleFilled
-    }
 }
 
 /// Controls the way that attribute pins behave
