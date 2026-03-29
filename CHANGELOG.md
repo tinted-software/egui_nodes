@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/tinted-software/egui_nodes/compare/v0.1.2...v0.1.3) - 2026-03-29
+
+### Other
+
+- *(deps)* update actions/checkout digest to 0c366fd
+- *(deps)* update release-plz/action digest to 1528104
+- *(deps)* pin dtolnay/rust-toolchain action to 29eef33
+
 ## [0.1.2](https://github.com/tinted-software/egui_nodes/compare/v0.1.1...v0.1.2) - 2026-02-14
 
 ### Other
