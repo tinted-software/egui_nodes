@@ -11,7 +11,7 @@ name = "egui_nodes"
 path = "src/lib.rs"
 
 [dependencies]
-egui = "0.33.3"
+egui = "0.34.0"
 derivative = "2.2.0"
 
 [dev-dependencies]
