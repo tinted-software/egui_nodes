@@ -12,6 +12,10 @@
       "description": "Automerge non-major updates",
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true
+    },
+    {
+      "matchPackageNames": ["egui", "eframe"],
+      "groupName": "egui dependencies"
     }
   ]
 }
