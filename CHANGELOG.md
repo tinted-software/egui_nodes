@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/tinted-software/egui_nodes/compare/v0.1.2...v0.1.3) - 2026-07-13
+
+### Fixed
+
+- *(deps)* update egui dependencies to 0.35.0 ([#44](https://github.com/tinted-software/egui_nodes/pull/44))
+- *(deps)* update egui dependencies to 0.34.0 ([#40](https://github.com/tinted-software/egui_nodes/pull/40))
+
+### Other
+
+- *(deps)* update dtolnay/rust-toolchain digest to 4be7066 ([#45](https://github.com/tinted-software/egui_nodes/pull/45))
+- *(deps)* update actions/checkout action to v7 ([#43](https://github.com/tinted-software/egui_nodes/pull/43))
+- *(deps)* update release-plz/action digest to e879257 ([#42](https://github.com/tinted-software/egui_nodes/pull/42))
+- *(deps)* update actions/checkout digest to df4cb1c
+- *(ci)* use the wild linker
+- *(deps)* update release-plz/action digest to 064f4d1
+- *(deps)* update actions/checkout digest to 0c366fd
+- *(deps)* update release-plz/action digest to 1528104
+- *(deps)* pin dtolnay/rust-toolchain action to 29eef33
+
 ## [0.1.2](https://github.com/tinted-software/egui_nodes/compare/v0.1.1...v0.1.2) - 2026-02-14
 
 ### Other
