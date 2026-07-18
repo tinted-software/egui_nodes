@@ -1,7 +1,7 @@
 use super::*;
 use derivative::Derivative;
 
-#[derive(Default, Debug)]
+#[derive(Default, Clone, Copy, Debug)]
 /// The Visual Style of a Link.
 /// If feilds are None then the Context style is used.
 /// shape defualts to CircleFilled

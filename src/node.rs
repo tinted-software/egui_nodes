@@ -1,7 +1,7 @@
 use super::*;
 use derivative::Derivative;
 
-#[derive(Default, Debug)]
+#[derive(Default, Clone, Copy, Debug)]
 /// The Style of a Node. If feilds are None then the Context style is used
 pub struct NodeArgs {
     pub background: Option<egui::Color32>,

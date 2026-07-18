@@ -19,6 +19,13 @@ pub enum ColorStyle {
     BoxSelectorOutline,
     GridBackground,
     GridLine,
+    GroupBackground,
+    GroupBackgroundHovered,
+    GroupBackgroundSelected,
+    GroupOutline,
+    GroupTitleBar,
+    GroupTitleBarHovered,
+    GroupTitleBarSelected,
     Count,
 }
 
@@ -39,6 +46,12 @@ pub enum StyleVar {
     PinLineThickness,
     PinHoverRadius,
     PinOffset,
+    GroupCornerRounding,
+    GroupPaddingHorizontal,
+    GroupPaddingVertical,
+    GroupBorderThickness,
+    GroupTitleBarHeight,
+    GroupResizeHandleSize,
 }
 
 /// Controls some style aspects
@@ -64,9 +77,9 @@ impl ColorStyle {
         colors[ColorStyle::TitleBar as usize] =
             egui::Color32::from_rgba_unmultiplied(41, 74, 122, 255);
         colors[ColorStyle::TitleBarHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
+            egui::Color32::from_rgba_unmultiplied(58, 100, 162, 255);
         colors[ColorStyle::TitleBarSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
+            egui::Color32::from_rgba_unmultiplied(62, 106, 170, 255);
         colors[ColorStyle::Link as usize] =
             egui::Color32::from_rgba_unmultiplied(61, 133, 224, 200);
         colors[ColorStyle::LinkHovered as usize] =
@@ -84,6 +97,20 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(40, 40, 50, 200);
         colors[ColorStyle::GridLine as usize] =
             egui::Color32::from_rgba_unmultiplied(200, 200, 200, 40);
+        colors[ColorStyle::GroupBackground as usize] =
+            egui::Color32::from_rgba_unmultiplied(40, 40, 40, 120);
+        colors[ColorStyle::GroupBackgroundHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(55, 55, 55, 140);
+        colors[ColorStyle::GroupBackgroundSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(55, 55, 55, 160);
+        colors[ColorStyle::GroupOutline as usize] =
+            egui::Color32::from_rgba_unmultiplied(100, 100, 100, 200);
+        colors[ColorStyle::GroupTitleBar as usize] =
+            egui::Color32::from_rgba_unmultiplied(41, 74, 122, 180);
+        colors[ColorStyle::GroupTitleBarHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(58, 100, 162, 200);
+        colors[ColorStyle::GroupTitleBarSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(62, 106, 170, 220);
         colors
     }
 
@@ -121,6 +148,20 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(40, 40, 50, 200);
         colors[ColorStyle::GridLine as usize] =
             egui::Color32::from_rgba_unmultiplied(200, 200, 200, 40);
+        colors[ColorStyle::GroupBackground as usize] =
+            egui::Color32::from_rgba_unmultiplied(50, 50, 50, 120);
+        colors[ColorStyle::GroupBackgroundHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(75, 75, 75, 140);
+        colors[ColorStyle::GroupBackgroundSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(75, 75, 75, 160);
+        colors[ColorStyle::GroupOutline as usize] =
+            egui::Color32::from_rgba_unmultiplied(100, 100, 100, 200);
+        colors[ColorStyle::GroupTitleBar as usize] =
+            egui::Color32::from_rgba_unmultiplied(69, 69, 138, 180);
+        colors[ColorStyle::GroupTitleBarHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(82, 82, 161, 200);
+        colors[ColorStyle::GroupTitleBarSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(82, 82, 161, 220);
         colors
     }
 
@@ -158,6 +199,20 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(225, 225, 225, 255);
         colors[ColorStyle::GridLine as usize] =
             egui::Color32::from_rgba_unmultiplied(180, 180, 180, 100);
+        colors[ColorStyle::GroupBackground as usize] =
+            egui::Color32::from_rgba_unmultiplied(220, 220, 220, 140);
+        colors[ColorStyle::GroupBackgroundHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(210, 210, 210, 160);
+        colors[ColorStyle::GroupBackgroundSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(200, 200, 200, 180);
+        colors[ColorStyle::GroupOutline as usize] =
+            egui::Color32::from_rgba_unmultiplied(100, 100, 100, 200);
+        colors[ColorStyle::GroupTitleBar as usize] =
+            egui::Color32::from_rgba_unmultiplied(248, 248, 248, 200);
+        colors[ColorStyle::GroupTitleBarHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(209, 209, 209, 220);
+        colors[ColorStyle::GroupTitleBarSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(209, 209, 209, 240);
         colors
     }
 }
@@ -189,6 +244,13 @@ pub struct Style {
     pub pin_hover_radius: f32,
     pub pin_offset: f32,
 
+    pub group_corner_rounding: f32,
+    pub group_padding_horizontal: f32,
+    pub group_padding_vertical: f32,
+    pub group_border_thickness: f32,
+    pub group_title_bar_height: f32,
+    pub group_resize_handle_size: f32,
+
     pub flags: usize,
     pub colors: [egui::Color32; ColorStyle::Count as usize],
 }
@@ -210,6 +272,12 @@ impl Default for Style {
             pin_line_thickness: 1.0,
             pin_hover_radius: 10.0,
             pin_offset: 0.0,
+            group_corner_rounding: 4.0,
+            group_padding_horizontal: 8.0,
+            group_padding_vertical: 8.0,
+            group_border_thickness: 1.0,
+            group_title_bar_height: 24.0,
+            group_resize_handle_size: 12.0,
             flags: StyleFlags::NodeOutline as usize | StyleFlags::GridLines as usize,
             colors: ColorStyle::colors_dark(),
         }
@@ -337,6 +405,33 @@ impl Style {
         });
         node.layout_style.border_thickness =
             args.border_thickness.unwrap_or(self.node_border_thickness);
+    }
+
+    pub(crate) fn format_group(&self, group: &mut GroupData, args: GroupArgs) {
+        group.color_style.background =
+            args.background.unwrap_or(self.colors[ColorStyle::GroupBackground as usize]);
+        group.color_style.background_hovered = args
+            .background_hovered
+            .unwrap_or(self.colors[ColorStyle::GroupBackgroundHovered as usize]);
+        group.color_style.background_selected = args
+            .background_selected
+            .unwrap_or(self.colors[ColorStyle::GroupBackgroundSelected as usize]);
+        group.color_style.outline =
+            args.outline.unwrap_or(self.colors[ColorStyle::GroupOutline as usize]);
+        group.color_style.titlebar =
+            args.titlebar.unwrap_or(self.colors[ColorStyle::GroupTitleBar as usize]);
+        group.color_style.titlebar_hovered =
+            args.titlebar_hovered.unwrap_or(self.colors[ColorStyle::GroupTitleBarHovered as usize]);
+        group.color_style.titlebar_selected = args
+            .titlebar_selected
+            .unwrap_or(self.colors[ColorStyle::GroupTitleBarSelected as usize]);
+        group.layout_style.corner_rounding =
+            args.corner_rounding.unwrap_or(self.group_corner_rounding);
+        group.layout_style.padding = args.padding.unwrap_or_else(|| {
+            egui::vec2(self.group_padding_horizontal, self.group_padding_vertical)
+        });
+        group.layout_style.border_thickness =
+            args.border_thickness.unwrap_or(self.group_border_thickness);
     }
 
     pub(crate) fn format_pin(&self, pin: &mut PinData, args: PinArgs, flags: usize) {

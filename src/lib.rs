@@ -6,7 +6,7 @@
 //!
 //! Here is the basic usage:
 //! ``` rust
-//! use egui_nodes::{Context, NodeConstructor, LinkArgs};
+//! use egui_nodes::{Context, NodeConstructor, GroupConstructor, LinkArgs};
 //! use egui::Ui;
 //!
 //! pub fn example_graph(ctx: &mut Context, links: &mut Vec<(usize, usize)>, ui: &mut Ui) {
@@ -23,9 +23,11 @@
 //!             .with_output_attribute(4, Default::default(), |ui| ui.label("Output"))
 //!             .with_input_attribute(5, Default::default(), |ui| ui.label("Input"))
 //!     ];
+//!     let groups: Vec<GroupConstructor> = vec![];
 //!
 //!     // add them to the ui
 //!     ctx.show(
+//!         groups,
 //!         nodes,
 //!         links.iter().enumerate().map(|(i, (start, end))| (i, *start, *end, LinkArgs::default())),
 //!         ui
@@ -47,16 +49,19 @@ use derivative::Derivative;
 use egui::UiBuilder;
 use std::collections::HashMap;
 
+mod group;
 mod link;
 mod node;
 mod pin;
 mod style;
 
+use group::*;
 use link::*;
 use node::*;
 use pin::*;
 
 pub use {
+    group::{GroupArgs, GroupConstructor},
     link::LinkArgs,
     node::{NodeArgs, NodeConstructor},
     pin::{AttributeFlags, PinArgs, PinShape},
@@ -119,6 +124,15 @@ pub struct Context {
     nodes_free: Vec<usize>,
 
     node_depth_order: Vec<usize>,
+    node_draw_order_scratch: Vec<usize>,
+
+    groups: ObjectPool<GroupData>,
+    group_depth_order: Vec<usize>,
+    group_draw_order_scratch: Vec<usize>,
+    hovered_group_index: Option<usize>,
+    hovered_group_resize_handle: bool,
+    interactive_group_index: Option<usize>,
+    selected_group_indices: Vec<usize>,
 
     panning: egui::Vec2,
 
@@ -134,6 +148,7 @@ impl Context {
     /// Displays the current state of the editor on a give Egui Ui as well as updating user input to the context
     pub fn show<'a>(
         &mut self,
+        groups: impl IntoIterator<Item = GroupConstructor<'a>>,
         nodes: impl IntoIterator<Item = NodeConstructor<'a>>,
         links: impl IntoIterator<Item = (usize, usize, usize, LinkArgs)>,
         ui: &mut egui::Ui,
@@ -145,10 +160,12 @@ impl Context {
             self.nodes.reset();
             self.pins.reset();
             self.links.reset();
+            self.groups.reset();
 
             self.hovered_node_index.take();
             self.interactive_node_index.take();
             self.hovered_link_idx.take();
+            self.hovered_group_index.take();
             self.hovered_pin_flags = AttributeFlags::None as usize;
             self.deleted_link_idx.take();
             self.snap_link_idx.take();
@@ -165,6 +182,16 @@ impl Context {
                 UiBuilder::new()
                     .max_rect(self.canvas_rect_screen_space)
                     .layout(egui::Layout::top_down(egui::Align::Center)),
+            );
+            // Claim the whole-canvas click/drag sense *before* any node/pin/attribute
+            // widgets are added below. egui's hit-test prefers the most-recently-registered
+            // widget under the pointer; registering this background sense first ensures
+            // interactive attribute widgets (checkboxes, sliders, ...) added afterward win
+            // ownership of clicks landing on them instead of this canvas catch-all.
+            let response = ui.interact(
+                self.canvas_rect_screen_space,
+                ui.id().with("Input"),
+                egui::Sense::click_and_drag(),
             );
             {
                 let ui = &mut ui;
@@ -189,18 +216,25 @@ impl Context {
                     .into_iter()
                     .map(|x| (self.node_pool_find_or_create_index(x.id, x.pos), x))
                     .collect::<HashMap<_, _>>();
-                for idx in self.node_depth_order.clone() {
+                for i in 0..self.node_depth_order.len() {
+                    let idx = self.node_depth_order[i];
                     if let Some(node_builder) = nodes.remove(&idx) {
                         self.add_node(idx, node_builder, ui);
                     }
                 }
+
+                let mut groups = groups
+                    .into_iter()
+                    .map(|x| (self.group_pool_find_or_create_index(x.id, x.pos, x.size), x))
+                    .collect::<HashMap<_, _>>();
+                for i in 0..self.group_depth_order.len() {
+                    let idx = self.group_depth_order[i];
+                    if let Some(group_builder) = groups.remove(&idx) {
+                        self.add_group(idx, group_builder, ui);
+                    }
+                }
             }
-            let response = ui.interact(
-                self.canvas_rect_screen_space,
-                ui.id().with("Input"),
-                egui::Sense::click_and_drag(),
-            );
-            let io = ui.ctx().input(|i| i.clone());
+            let (pointer, modifiers) = ui.ctx().input(|i| (i.pointer.clone(), i.modifiers));
             let mouse_pos = if let Some(mouse_pos) = response.hover_pos() {
                 self.mouse_in_canvas = true;
                 mouse_pos
@@ -210,7 +244,7 @@ impl Context {
             };
             self.mouse_delta = mouse_pos - self.mouse_pos;
             self.mouse_pos = mouse_pos;
-            let left_mouse_clicked = io.pointer.button_down(egui::PointerButton::Primary);
+            let left_mouse_clicked = pointer.button_down(egui::PointerButton::Primary);
             self.left_mouse_released =
                 (self.left_mouse_clicked || self.left_mouse_dragging) && !left_mouse_clicked;
             self.left_mouse_dragging =
@@ -218,14 +252,14 @@ impl Context {
             self.left_mouse_clicked =
                 left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
 
-            let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&io.modifiers)
-                || self.io.alt_mouse_button.is_some_and(|x| io.pointer.button_down(x));
+            let alt_mouse_clicked = self.io.emulate_three_button_mouse.is_active(&modifiers)
+                || self.io.alt_mouse_button.is_some_and(|x| pointer.button_down(x));
             self.alt_mouse_dragging =
                 (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
             self.alt_mouse_clicked =
                 alt_mouse_clicked && !(self.alt_mouse_clicked || self.alt_mouse_dragging);
             self.link_detatch_with_modifier_click =
-                self.io.link_detatch_with_modifier_click.is_active(&io.modifiers);
+                self.io.link_detatch_with_modifier_click.is_active(&modifiers);
             {
                 let ui = &mut ui;
                 if self.mouse_in_canvas {
@@ -239,16 +273,32 @@ impl Context {
                     if self.hovered_node_index.is_none() {
                         self.resolve_hovered_link();
                     }
+
+                    if self.hovered_node_index.is_none() && self.hovered_link_idx.is_none() {
+                        self.resolve_hovered_group();
+                    }
                 }
 
-                for node_idx in self.node_depth_order.clone() {
+                self.group_draw_order_scratch.clear();
+                self.group_draw_order_scratch.extend_from_slice(&self.group_depth_order);
+                for i in 0..self.group_draw_order_scratch.len() {
+                    let idx = self.group_draw_order_scratch[i];
+                    if self.groups.in_use[idx] {
+                        self.draw_group(idx, ui);
+                    }
+                }
+
+                self.node_draw_order_scratch.clear();
+                self.node_draw_order_scratch.extend_from_slice(&self.node_depth_order);
+                for i in 0..self.node_draw_order_scratch.len() {
+                    let node_idx = self.node_draw_order_scratch[i];
                     if self.nodes.in_use[node_idx] {
                         self.draw_node(node_idx, ui);
                     }
                 }
 
-                for (link_idx, in_use) in self.links.in_use.clone().into_iter().enumerate() {
-                    if in_use {
+                for link_idx in 0..self.links.in_use.len() {
+                    if self.links.in_use[link_idx] {
                         self.draw_link(link_idx, ui);
                     }
                 }
@@ -262,6 +312,7 @@ impl Context {
                 self.node_pool_update();
                 self.pins.update();
                 self.links.update();
+                self.group_pool_update();
             }
             ui.painter().rect_stroke(
                 self.canvas_rect_screen_space,
@@ -487,6 +538,69 @@ impl Context {
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
         self.nodes.find(id).map(|x| self.nodes.pool[x].rect.size())
     }
+
+    pub fn set_group_pos_screen_space(&mut self, group_id: usize, screen_space_pos: egui::Pos2) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].origin = self.screen_space_to_grid_space(screen_space_pos);
+    }
+
+    pub fn set_group_pos_editor_space(&mut self, group_id: usize, editor_space_pos: egui::Pos2) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].origin = self.editor_space_to_grid_spcae(editor_space_pos);
+    }
+
+    pub fn set_group_pos_grid_space(&mut self, group_id: usize, grid_pos: egui::Pos2) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].origin = grid_pos;
+    }
+
+    pub fn get_group_pos_screen_space(&self, group_id: usize) -> Option<egui::Pos2> {
+        self.groups
+            .find(group_id)
+            .map(|x| self.grid_space_to_screen_space(self.groups.pool[x].origin))
+    }
+
+    pub fn get_group_pos_editor_space(&self, group_id: usize) -> Option<egui::Pos2> {
+        self.groups
+            .find(group_id)
+            .map(|x| self.grid_space_to_editor_spcae(self.groups.pool[x].origin))
+    }
+
+    pub fn get_group_pos_grid_space(&self, group_id: usize) -> Option<egui::Pos2> {
+        self.groups.find(group_id).map(|x| self.groups.pool[x].origin)
+    }
+
+    pub fn set_group_draggable(&mut self, group_id: usize, draggable: bool) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].draggable = draggable;
+    }
+
+    pub fn set_group_resizable(&mut self, group_id: usize, resizable: bool) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].resizable = resizable;
+    }
+
+    pub fn get_group_size(&self, group_id: usize) -> Option<egui::Vec2> {
+        self.groups.find(group_id).map(|x| self.groups.pool[x].size)
+    }
+
+    pub fn set_group_size(&mut self, group_id: usize, size: egui::Vec2) {
+        let idx = self.group_pool_find_or_create_index(group_id, None, None);
+        self.groups.pool[idx].size = size;
+    }
+
+    /// Check if there is a group that is hovered by the pointer
+    pub fn group_hovered(&self) -> Option<usize> {
+        self.hovered_group_index.map(|x| self.groups.pool[x].id)
+    }
+
+    pub fn get_selected_groups(&self) -> Vec<usize> {
+        self.selected_group_indices.iter().map(|x| self.groups.pool[*x].id).collect()
+    }
+
+    pub fn clear_group_selection(&mut self) {
+        self.selected_group_indices.clear()
+    }
 }
 
 impl Context {
@@ -544,6 +658,54 @@ impl Context {
         node.rect = response.response.rect.expand2(node.layout_style.padding);
         if response.response.hovered() || ui.rect_contains_pointer(node.rect) {
             self.node_indices_overlapping_with_mouse.push(idx);
+        }
+    }
+
+    fn add_group(
+        &mut self,
+        idx: usize,
+        GroupConstructor {
+            id,
+            title,
+            member_ids,
+            pos: _,
+            size: _,
+            args,
+        }: GroupConstructor<'_>,
+        ui: &mut egui::Ui,
+    ) {
+        self.style.format_group(&mut self.groups.pool[idx], args);
+        let group = &mut self.groups.pool[idx];
+        group.background_shape.replace(ui.painter().add(egui::Shape::Noop));
+        group.titlebar_shape.replace(ui.painter().add(egui::Shape::Noop));
+        group.outline_shape.replace(ui.painter().add(egui::Shape::Noop));
+        group.id = id;
+        let group_origin = group.origin;
+        let group_size = group.size;
+
+        let screen_min = self.grid_space_to_screen_space(group_origin);
+        let rect = egui::Rect::from_min_size(screen_min, group_size);
+        let title_bar_rect = egui::Rect::from_min_size(
+            rect.min,
+            egui::vec2(rect.width(), self.style.group_title_bar_height),
+        );
+        let group = &mut self.groups.pool[idx];
+        group.rect = rect;
+        group.title_bar_rect = title_bar_rect;
+
+        for mid in member_ids.iter() {
+            if let Some(node_idx) = self.nodes.find(*mid) {
+                self.groups.pool[idx].member_node_indices.push(node_idx);
+            }
+        }
+        self.groups.pool[idx].member_node_ids = member_ids;
+
+        if let Some(title) = title {
+            let padding = self.groups.pool[idx].layout_style.padding.x;
+            ui.scope_builder(
+                UiBuilder::new().max_rect(title_bar_rect.shrink2(egui::vec2(padding, 0.0))),
+                title,
+            );
         }
     }
 
@@ -621,6 +783,12 @@ impl Context {
             StyleVar::PinLineThickness => &mut self.style.pin_line_thickness,
             StyleVar::PinHoverRadius => &mut self.style.pin_hover_radius,
             StyleVar::PinOffset => &mut self.style.pin_offset,
+            StyleVar::GroupCornerRounding => &mut self.style.group_corner_rounding,
+            StyleVar::GroupPaddingHorizontal => &mut self.style.group_padding_horizontal,
+            StyleVar::GroupPaddingVertical => &mut self.style.group_padding_vertical,
+            StyleVar::GroupBorderThickness => &mut self.style.group_border_thickness,
+            StyleVar::GroupTitleBarHeight => &mut self.style.group_title_bar_height,
+            StyleVar::GroupResizeHandleSize => &mut self.style.group_resize_handle_size,
         }
     }
 
@@ -782,6 +950,36 @@ impl Context {
         }
     }
 
+    fn resolve_hovered_group(&mut self) {
+        self.hovered_group_index.take();
+        self.hovered_group_resize_handle = false;
+
+        for idx in self.group_depth_order.iter().rev() {
+            let idx = *idx;
+            if !self.groups.in_use[idx] {
+                continue;
+            }
+            let group = &self.groups.pool[idx];
+            if group.resizable {
+                let handle_size = egui::vec2(
+                    self.style.group_resize_handle_size,
+                    self.style.group_resize_handle_size,
+                );
+                let handle_rect =
+                    egui::Rect::from_min_size(group.rect.right_bottom() - handle_size, handle_size);
+                if handle_rect.contains(self.mouse_pos) {
+                    self.hovered_group_index.replace(idx);
+                    self.hovered_group_resize_handle = true;
+                    return;
+                }
+            }
+            if group.rect.contains(self.mouse_pos) {
+                self.hovered_group_index.replace(idx);
+                return;
+            }
+        }
+    }
+
     fn draw_link(&mut self, link_idx: usize, ui: &mut egui::Ui) {
         let link = &mut self.links.pool[link_idx];
         let start_pin = &self.pins.pool[link.start_pin_index];
@@ -867,13 +1065,67 @@ impl Context {
             );
         }
 
-        for pin_idx in node.pin_indices.clone() {
+        for i in 0..self.nodes.pool[node_idx].pin_indices.len() {
+            let pin_idx = self.nodes.pool[node_idx].pin_indices[i];
             self.draw_pin(pin_idx, ui);
         }
 
         if node_hovered && self.left_mouse_clicked && self.interactive_node_index != Some(node_idx)
         {
             self.begin_node_selection(node_idx);
+        }
+    }
+
+    fn draw_group(&mut self, group_idx: usize, ui: &mut egui::Ui) {
+        let group = &mut self.groups.pool[group_idx];
+
+        let group_hovered = self.hovered_group_index == Some(group_idx)
+            && self.click_interaction_type != ClickInteractionType::BoxSelection;
+
+        let mut background = group.color_style.background;
+        let mut titlebar = group.color_style.titlebar;
+
+        if self.selected_group_indices.contains(&group_idx) {
+            background = group.color_style.background_selected;
+            titlebar = group.color_style.titlebar_selected;
+        } else if group_hovered {
+            background = group.color_style.background_hovered;
+            titlebar = group.color_style.titlebar_hovered;
+        }
+
+        let painter = ui.painter();
+
+        painter.set(
+            group.background_shape.take().unwrap(),
+            egui::Shape::rect_filled(group.rect, group.layout_style.corner_rounding, background),
+        );
+        painter.set(
+            group.titlebar_shape.take().unwrap(),
+            egui::Shape::rect_filled(
+                group.title_bar_rect,
+                group.layout_style.corner_rounding,
+                titlebar,
+            ),
+        );
+        painter.set(
+            group.outline_shape.take().unwrap(),
+            egui::Shape::rect_stroke(
+                group.rect,
+                group.layout_style.corner_rounding,
+                (
+                    group.layout_style.border_thickness,
+                    group.color_style.outline,
+                ),
+                egui::StrokeKind::Inside,
+            ),
+        );
+
+        if group_hovered && self.left_mouse_clicked {
+            if self.hovered_group_resize_handle {
+                self.begin_group_resize(group_idx);
+            } else {
+                self.begin_group_selection(group_idx);
+            }
         }
     }
 
@@ -939,6 +1191,23 @@ impl Context {
                 let node = &mut self.nodes.pool[*idx];
                 if node.draggable {
                     node.origin += delta;
+                }
+            }
+        }
+    }
+
+    fn translate_selected_groups(&mut self) {
+        if self.left_mouse_dragging {
+            let delta = self.mouse_delta;
+            for idx in self.selected_group_indices.iter() {
+                let group = &mut self.groups.pool[*idx];
+                if group.draggable {
+                    group.origin += delta;
+                }
+            }
+            for idx in self.selected_group_indices.iter() {
+                for mi in self.groups.pool[*idx].member_node_indices.iter() {
+                    self.nodes.pool[*mi].origin += delta;
                 }
             }
         }
@@ -1173,6 +1442,28 @@ impl Context {
                     self.click_interaction_type = ClickInteractionType::None;
                 }
             }
+            ClickInteractionType::Group => {
+                self.translate_selected_groups();
+                if self.left_mouse_released {
+                    self.click_interaction_type = ClickInteractionType::None;
+                }
+            }
+            ClickInteractionType::GroupResize => {
+                if let Some(idx) = self.interactive_group_index.filter(|_| self.left_mouse_dragging)
+                {
+                    let delta = self.mouse_delta;
+                    let min_size = egui::vec2(
+                        self.style.group_resize_handle_size * 2.0,
+                        self.style.group_title_bar_height + self.style.group_resize_handle_size,
+                    );
+                    let group = &mut self.groups.pool[idx];
+                    group.size = (group.size + delta).max(min_size);
+                }
+                if self.left_mouse_released {
+                    self.click_interaction_type = ClickInteractionType::None;
+                    self.interactive_group_index = None;
+                }
+            }
             ClickInteractionType::None => (),
         }
     }
@@ -1259,6 +1550,28 @@ impl Context {
             self.node_depth_order.push(idx);
         }
     }
+
+    fn begin_group_selection(&mut self, idx: usize) {
+        if self.click_interaction_type != ClickInteractionType::None {
+            return;
+        }
+        self.click_interaction_type = ClickInteractionType::Group;
+        if !self.selected_group_indices.contains(&idx) {
+            self.selected_group_indices.clear();
+            self.selected_group_indices.push(idx);
+
+            self.group_depth_order.retain(|x| *x != idx);
+            self.group_depth_order.push(idx);
+        }
+    }
+
+    fn begin_group_resize(&mut self, idx: usize) {
+        if self.click_interaction_type != ClickInteractionType::None {
+            return;
+        }
+        self.click_interaction_type = ClickInteractionType::GroupResize;
+        self.interactive_group_index = Some(idx);
+    }
 }
 
 #[derive(Debug)]
@@ -1276,6 +1589,8 @@ enum ClickInteractionType {
     LinkCreation,
     Panning,
     BoxSelection,
+    Group,
+    GroupResize,
     None,
 }
 
@@ -1461,6 +1776,57 @@ impl Context {
             }
         };
         self.nodes.in_use[index] = true;
+        index
+    }
+
+    fn group_pool_update(&mut self) {
+        self.groups.free.clear();
+        for (i, (in_use, group)) in
+            self.groups.in_use.iter_mut().zip(self.groups.pool.iter_mut()).enumerate()
+        {
+            if *in_use {
+                group.member_node_indices.clear();
+            } else {
+                if self.groups.map.contains_key(&group.id) {
+                    self.group_depth_order.retain(|x| *x != i);
+                }
+                self.groups.map.remove(&group.id);
+                self.groups.free.push(i);
+            }
+        }
+    }
+
+    fn group_pool_find_or_create_index(
+        &mut self,
+        id: usize,
+        origin: Option<egui::Pos2>,
+        size: Option<egui::Vec2>,
+    ) -> usize {
+        let index = {
+            if let Some(index) = self.groups.find(id) {
+                index
+            } else {
+                let mut new_group = GroupData::new(id);
+                if let Some(origin) = origin {
+                    new_group.origin = self.screen_space_to_grid_space(origin);
+                }
+                if let Some(size) = size {
+                    new_group.size = size;
+                }
+                let index = if let Some(index) = self.groups.free.pop() {
+                    self.groups.pool[index] = new_group;
+                    index
+                } else {
+                    self.groups.pool.push(new_group);
+                    self.groups.in_use.push(false);
+                    self.groups.pool.len() - 1
+                };
+                self.groups.map.insert(id, index);
+                self.group_depth_order.push(index);
+                index
+            }
+        };
+        self.groups.in_use[index] = true;
         index
     }
 }
