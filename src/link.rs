@@ -3,7 +3,7 @@ use derivative::Derivative;
 use egui::epaint::PathShape;
 
 /// The Color Style of a Link. If feilds are None then the Context style is used
-#[derive(Default, Debug)]
+#[derive(Default, Clone, Copy, Debug)]
 pub struct LinkArgs {
     pub base: Option<egui::Color32>,
     pub hovered: Option<egui::Color32>,
