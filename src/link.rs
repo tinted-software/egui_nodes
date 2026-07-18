@@ -1,5 +1,5 @@
 use super::*;
-use derivative::Derivative;
+use educe::Educe;
 use egui::epaint::PathShape;
 
 /// The Color Style of a Link. If feilds are None then the Context style is used
@@ -26,15 +26,15 @@ pub struct LinkDataColorStyle {
     pub hovered: egui::Color32,
     pub selected: egui::Color32,
 }
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 pub struct LinkData {
     pub id: usize,
     pub start_pin_index: usize,
     pub end_pin_index: usize,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub color_style: LinkDataColorStyle,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub shape: Option<egui::layers::ShapeIdx>,
 }
 
