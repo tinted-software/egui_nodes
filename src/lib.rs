@@ -45,7 +45,7 @@
 //! }
 //! ```
 
-use derivative::Derivative;
+use educe::Educe;
 use egui::UiBuilder;
 use std::collections::HashMap;
 
@@ -69,24 +69,22 @@ pub use {
 };
 
 /// The Context that tracks the state of the node editor
-#[derive(Derivative)]
-#[derivative(Default, Debug)]
+#[derive(Educe)]
+#[educe(Debug, Default)]
 pub struct Context {
-    node_idx_submission_order: Vec<usize>,
     node_indices_overlapping_with_mouse: Vec<usize>,
     occluded_pin_indices: Vec<usize>,
 
     canvas_origin_screen_space: egui::Vec2,
-    #[derivative(Default(value = "[[0.0; 2].into(); 2].into()"))]
+    #[educe(Default(expression = [[0.0; 2].into(); 2].into()))]
     canvas_rect_screen_space: egui::Rect,
 
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub io: IO,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub style: Style,
     color_modifier_stack: Vec<ColorStyleElement>,
     style_modifier_stack: Vec<StyleElement>,
-    text_buffer: String,
 
     current_attribute_flags: usize,
     attribute_flag_stack: Vec<usize>,
@@ -96,7 +94,6 @@ pub struct Context {
     hovered_link_idx: Option<usize>,
     hovered_pin_index: Option<usize>,
     hovered_pin_flags: usize,
-    ui_element_hovered: bool,
 
     deleted_link_idx: Option<usize>,
     snap_link_idx: Option<usize>,
@@ -120,8 +117,6 @@ pub struct Context {
     nodes: ObjectPool<NodeData>,
     pins: ObjectPool<PinData>,
     links: ObjectPool<LinkData>,
-    nodes_map: HashMap<usize, usize>,
-    nodes_free: Vec<usize>,
 
     node_depth_order: Vec<usize>,
     node_draw_order_scratch: Vec<usize>,
@@ -139,7 +134,7 @@ pub struct Context {
     selected_node_indices: Vec<usize>,
     selected_link_indices: Vec<usize>,
 
-    #[derivative(Default(value = "ClickInteractionType::None"))]
+    #[educe(Default(expression = ClickInteractionType::None))]
     click_interaction_type: ClickInteractionType,
     click_interaction_state: ClickInteractionState,
 }
@@ -1600,20 +1595,20 @@ enum LinkCreationType {
     FromDetach,
 }
 
-#[derive(Derivative, Debug)]
-#[derivative(Default)]
+#[derive(Educe, Debug)]
+#[educe(Default)]
 struct ClickInteractionStateLinkCreation {
     start_pin_idx: usize,
     end_pin_index: Option<usize>,
-    #[derivative(Default(value = "LinkCreationType::Standard"))]
+    #[educe(Default(expression = LinkCreationType::Standard))]
     link_creation_type: LinkCreationType,
 }
 
-#[derive(Derivative, Debug)]
-#[derivative(Default)]
+#[derive(Educe, Debug)]
+#[educe(Default)]
 struct ClickInteractionState {
     link_creation: ClickInteractionStateLinkCreation,
-    #[derivative(Default(value = "[[0.0; 2].into(); 2].into()"))]
+    #[educe(Default(expression = [[0.0; 2].into(); 2].into()))]
     box_selection: egui::Rect,
 }
 
@@ -1642,19 +1637,19 @@ impl StyleElement {
 }
 
 /// This controls the modifers needed for certain mouse interactions
-#[derive(Derivative, Debug)]
-#[derivative(Default)]
+#[derive(Educe, Debug)]
+#[educe(Default)]
 pub struct IO {
     /// The Modfier that needs to pressed to pan the editor
-    #[derivative(Default(value = "Modifiers::None"))]
+    #[educe(Default(expression = Modifiers::None))]
     pub emulate_three_button_mouse: Modifiers,
 
     // The Modifier that needs to be pressed to detatch a link instead of creating a new one
-    #[derivative(Default(value = "Modifiers::None"))]
+    #[educe(Default(expression = Modifiers::None))]
     pub link_detatch_with_modifier_click: Modifiers,
 
     // The mouse button that pans the editor. Should probably not be set to Primary.
-    #[derivative(Default(value = "Some(egui::PointerButton::Middle)"))]
+    #[educe(Default(expression = Some(egui::PointerButton::Middle)))]
     pub alt_mouse_button: Option<egui::PointerButton>,
 }
 

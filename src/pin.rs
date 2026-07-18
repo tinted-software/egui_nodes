@@ -1,5 +1,5 @@
 use super::*;
-use derivative::Derivative;
+use educe::Educe;
 
 #[derive(Default, Clone, Copy, Debug)]
 /// The Visual Style of a Link.
@@ -63,8 +63,8 @@ pub(crate) struct PinDataColorStyle {
     pub hovered: egui::Color32,
 }
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 pub(crate) struct PinData {
     pub id: usize,
     pub parent_node_idx: usize,
@@ -73,9 +73,9 @@ pub(crate) struct PinData {
     pub shape: PinShape,
     pub pos: egui::Pos2,
     pub flags: usize,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub color_style: PinDataColorStyle,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub shape_gui: Option<egui::layers::ShapeIdx>,
 }
 

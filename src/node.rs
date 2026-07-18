@@ -1,5 +1,5 @@
 use super::*;
-use derivative::Derivative;
+use educe::Educe;
 
 #[derive(Default, Clone, Copy, Debug)]
 /// The Style of a Node. If feilds are None then the Context style is used
@@ -51,24 +51,24 @@ pub struct NodeDataLayoutStyle {
     pub border_thickness: f32,
 }
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 pub(crate) struct NodeData {
     pub id: usize,
     pub origin: egui::Pos2,
     pub size: egui::Vec2,
     pub title_bar_content_rect: egui::Rect,
     pub rect: egui::Rect,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub color_style: NodeDataColorStyle,
     pub layout_style: NodeDataLayoutStyle,
     pub pin_indices: Vec<usize>,
     pub draggable: bool,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub titlebar_shape: Option<egui::layers::ShapeIdx>,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub background_shape: Option<egui::layers::ShapeIdx>,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub outline_shape: Option<egui::layers::ShapeIdx>,
 }
 
@@ -108,15 +108,15 @@ impl Default for NodeData {
 
 /// Used to construct a node and stores the relevant ui code for its title and attributes
 /// This is used so that the nodes can be rendered in the context depth order
-#[derive(Derivative, Default)]
-#[derivative(Debug)]
+#[derive(Educe, Default)]
+#[educe(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct NodeConstructor<'a> {
     //node: &'a mut NodeData,
     pub(crate) id: usize,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub(crate) title: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub(crate) attributes: Vec<(
         usize,
         AttributeType,

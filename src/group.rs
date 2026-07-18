@@ -1,5 +1,5 @@
 use super::*;
-use derivative::Derivative;
+use educe::Educe;
 
 #[derive(Default, Clone, Copy, Debug)]
 /// The Style of a Group. If feilds are None then the Context style is used
@@ -54,26 +54,26 @@ pub struct GroupDataLayoutStyle {
 /// Comment-box style node group. Members are dragged together when the
 /// group's title bar is dragged. Membership is explicit (caller-supplied
 /// each frame via [`GroupConstructor::with_nodes`]), not spatial containment.
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 pub(crate) struct GroupData {
     pub id: usize,
     pub origin: egui::Pos2,
     pub size: egui::Vec2,
     pub rect: egui::Rect,
     pub title_bar_rect: egui::Rect,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub color_style: GroupDataColorStyle,
     pub layout_style: GroupDataLayoutStyle,
     pub member_node_ids: Vec<usize>,
     pub member_node_indices: Vec<usize>,
     pub draggable: bool,
     pub resizable: bool,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub titlebar_shape: Option<egui::layers::ShapeIdx>,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub background_shape: Option<egui::layers::ShapeIdx>,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub outline_shape: Option<egui::layers::ShapeIdx>,
 }
 
@@ -116,12 +116,12 @@ impl Id for GroupData {
 /// Used to construct a comment-box node group and stores the relevant ui code for its title.
 /// Groups are always rendered behind nodes; dragging the group's title bar drags every
 /// member node along with it.
-#[derive(Derivative, Default)]
-#[derivative(Debug)]
+#[derive(Educe, Default)]
+#[educe(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct GroupConstructor<'a> {
     pub(crate) id: usize,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub(crate) title: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     pub(crate) member_ids: Vec<usize>,
     pub(crate) pos: Option<egui::Pos2>,
