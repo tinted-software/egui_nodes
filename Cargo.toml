@@ -11,8 +11,8 @@ name = "egui_nodes"
 path = "src/lib.rs"
 
 [dependencies]
-egui = "0.35.0"
+egui = "0.36.0"
 educe = { version = "0.7.4", features = ["full"] }
 
 [dev-dependencies]
-eframe = "0.35.0"
+eframe = "0.36.0"
