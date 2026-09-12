@@ -67,50 +67,51 @@ impl ColorStyle {
     pub fn colors_dark() -> [egui::Color32; ColorStyle::Count as usize] {
         let mut colors = [egui::Color32::BLACK; ColorStyle::Count as usize];
         colors[ColorStyle::NodeBackground as usize] =
-            egui::Color32::from_rgba_unmultiplied(50, 50, 50, 255);
+            egui::Color32::from_rgba_unmultiplied(35, 35, 35, 255);
         colors[ColorStyle::NodeBackgroundHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(75, 75, 75, 255);
+            egui::Color32::from_rgba_unmultiplied(42, 42, 42, 255);
         colors[ColorStyle::NodeBackgroundSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(75, 75, 75, 255);
+            egui::Color32::from_rgba_unmultiplied(42, 42, 42, 255);
         colors[ColorStyle::NodeOutline as usize] =
-            egui::Color32::from_rgba_unmultiplied(100, 100, 100, 255);
+            egui::Color32::from_rgba_unmultiplied(20, 20, 20, 255);
         colors[ColorStyle::TitleBar as usize] =
-            egui::Color32::from_rgba_unmultiplied(41, 74, 122, 255);
+            egui::Color32::from_rgba_unmultiplied(25, 25, 25, 255);
         colors[ColorStyle::TitleBarHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(58, 100, 162, 255);
+            egui::Color32::from_rgba_unmultiplied(30, 30, 30, 255);
         colors[ColorStyle::TitleBarSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(62, 106, 170, 255);
+            egui::Color32::from_rgba_unmultiplied(40, 40, 40, 255);
         colors[ColorStyle::Link as usize] =
-            egui::Color32::from_rgba_unmultiplied(61, 133, 224, 200);
+            egui::Color32::from_rgba_unmultiplied(170, 170, 170, 200);
         colors[ColorStyle::LinkHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
+            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 255);
         colors[ColorStyle::LinkSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
-        colors[ColorStyle::Pin as usize] = egui::Color32::from_rgba_unmultiplied(53, 150, 250, 180);
+            egui::Color32::from_rgba_unmultiplied(255, 210, 0, 255);
+        colors[ColorStyle::Pin as usize] =
+            egui::Color32::from_rgba_unmultiplied(180, 180, 180, 200);
         colors[ColorStyle::PinHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(53, 150, 250, 255);
+            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 255);
         colors[ColorStyle::BoxSelector as usize] =
-            egui::Color32::from_rgba_unmultiplied(61, 133, 224, 30);
+            egui::Color32::from_rgba_unmultiplied(90, 90, 90, 30);
         colors[ColorStyle::BoxSelectorOutline as usize] =
-            egui::Color32::from_rgba_unmultiplied(61, 133, 224, 150);
+            egui::Color32::from_rgba_unmultiplied(140, 140, 140, 150);
         colors[ColorStyle::GridBackground as usize] =
-            egui::Color32::from_rgba_unmultiplied(40, 40, 50, 200);
+            egui::Color32::from_rgba_unmultiplied(18, 18, 18, 255);
         colors[ColorStyle::GridLine as usize] =
-            egui::Color32::from_rgba_unmultiplied(200, 200, 200, 40);
+            egui::Color32::from_rgba_unmultiplied(70, 70, 70, 40);
         colors[ColorStyle::GroupBackground as usize] =
-            egui::Color32::from_rgba_unmultiplied(40, 40, 40, 120);
+            egui::Color32::from_rgba_unmultiplied(30, 30, 30, 120);
         colors[ColorStyle::GroupBackgroundHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(55, 55, 55, 140);
+            egui::Color32::from_rgba_unmultiplied(38, 38, 38, 140);
         colors[ColorStyle::GroupBackgroundSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(55, 55, 55, 160);
+            egui::Color32::from_rgba_unmultiplied(38, 38, 38, 160);
         colors[ColorStyle::GroupOutline as usize] =
-            egui::Color32::from_rgba_unmultiplied(100, 100, 100, 200);
+            egui::Color32::from_rgba_unmultiplied(70, 70, 70, 200);
         colors[ColorStyle::GroupTitleBar as usize] =
-            egui::Color32::from_rgba_unmultiplied(41, 74, 122, 180);
+            egui::Color32::from_rgba_unmultiplied(25, 25, 25, 180);
         colors[ColorStyle::GroupTitleBarHovered as usize] =
-            egui::Color32::from_rgba_unmultiplied(58, 100, 162, 200);
+            egui::Color32::from_rgba_unmultiplied(30, 30, 30, 200);
         colors[ColorStyle::GroupTitleBarSelected as usize] =
-            egui::Color32::from_rgba_unmultiplied(62, 106, 170, 220);
+            egui::Color32::from_rgba_unmultiplied(40, 40, 40, 220);
         colors
     }
 
