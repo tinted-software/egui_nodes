@@ -246,9 +246,12 @@ impl Context {
                 // different local-space region (larger when zoomed out, smaller when
                 // zoomed in). Compute that region so the background fill, grid lines,
                 // and clip rect all cover the full visible viewport instead of only the
-                // original, unscaled canvas rect.
+                // original, unscaled canvas rect. `screen_rect` is in real (global,
+                // untransformed) screen space, so it must be converted into the same
+                // local space before intersecting with it.
                 let visible_rect = self.zoom_transform.inverse() * self.canvas_rect_screen_space;
-                ui.set_clip_rect(visible_rect.intersect(screen_rect));
+                let screen_rect_local = self.zoom_transform.inverse() * screen_rect;
+                ui.set_clip_rect(visible_rect.intersect(screen_rect_local));
                 ui.painter().rect_filled(
                     visible_rect,
                     0.0,
