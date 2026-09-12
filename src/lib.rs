@@ -210,9 +210,18 @@ impl Context {
 
             // Handle zooming: scroll wheel while hovering the canvas zooms in/out,
             // anchored on the pointer position so the point under the cursor stays put.
-            if let Some(pointer_pos) = response.hover_pos() {
+            // NOTE: we deliberately use the raw pointer position + a plain rect-contains
+            // check here instead of `response.hover_pos()`. The latter is only `Some`
+            // when this specific widget "wins" hover for the pixel (i.e. no node/pin/
+            // attribute widget on top of it), so scrolling while the pointer is over a
+            // node would otherwise silently drop the scroll delta and make zoom feel
+            // laggy / intermittent.
+            if let Some(global_pointer_pos) = ui.input(|i| i.pointer.latest_pos())
+                && self.canvas_rect_screen_space.contains(global_pointer_pos)
+            {
                 let scroll = ui.input(|i| i.smooth_scroll_delta.y);
                 if scroll != 0.0 {
+                    let pointer_pos = self.zoom_transform.inverse() * global_pointer_pos;
                     let mut zoom_transform = self.zoom_transform;
                     let zoom_delta = (scroll * 0.0015).exp();
                     let zoom_delta = zoom_delta.clamp(
