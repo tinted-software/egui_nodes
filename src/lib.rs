@@ -47,6 +47,7 @@
 
 use educe::Educe;
 use egui::UiBuilder;
+use egui::emath::TSTransform;
 use std::collections::HashMap;
 
 mod group;
@@ -131,6 +132,16 @@ pub struct Context {
 
     panning: egui::Vec2,
 
+    /// The transform applied to the whole canvas layer to implement zooming.
+    /// `zoom_transform.scaling` is the current zoom factor.
+    #[educe(Default(expression = TSTransform::IDENTITY))]
+    zoom_transform: TSTransform,
+    /// Minimum/maximum allowed zoom factor.
+    #[educe(Default(expression = 0.1))]
+    zoom_min: f32,
+    #[educe(Default(expression = 2.5))]
+    zoom_max: f32,
+
     selected_node_indices: Vec<usize>,
     selected_link_indices: Vec<usize>,
 
@@ -173,10 +184,15 @@ impl Context {
 
         {
             ui.set_min_size(self.canvas_rect_screen_space.size());
+            let zoom_layer_id =
+                egui::LayerId::new(ui.layer_id().order, ui.id().with("egui_nodes_zoom_layer"));
+            ui.ctx().set_sublayer(ui.layer_id(), zoom_layer_id);
             let mut ui = ui.new_child(
                 UiBuilder::new()
+                    .layer_id(zoom_layer_id)
                     .max_rect(self.canvas_rect_screen_space)
-                    .layout(egui::Layout::top_down(egui::Align::Center)),
+                    .layout(egui::Layout::top_down(egui::Align::Center))
+                    .sense(egui::Sense::click_and_drag()),
             );
             // Claim the whole-canvas click/drag sense *before* any node/pin/attribute
             // widgets are added below. egui's hit-test prefers the most-recently-registered
@@ -188,6 +204,28 @@ impl Context {
                 ui.id().with("Input"),
                 egui::Sense::click_and_drag(),
             );
+
+            // Handle zooming: scroll wheel while hovering the canvas zooms in/out,
+            // anchored on the pointer position so the point under the cursor stays put.
+            if let Some(pointer_pos) = response.hover_pos() {
+                let scroll = ui.input(|i| i.smooth_scroll_delta.y);
+                if scroll != 0.0 {
+                    let mut zoom_transform = self.zoom_transform;
+                    let zoom_delta = (scroll * 0.0015).exp();
+                    let zoom_delta = zoom_delta.clamp(
+                        self.zoom_min / zoom_transform.scaling,
+                        self.zoom_max / zoom_transform.scaling,
+                    );
+                    zoom_transform = zoom_transform
+                        * TSTransform::from_translation(pointer_pos.to_vec2())
+                        * TSTransform::from_scaling(zoom_delta)
+                        * TSTransform::from_translation(-pointer_pos.to_vec2());
+                    zoom_transform.scaling =
+                        zoom_transform.scaling.clamp(self.zoom_min, self.zoom_max);
+                    self.zoom_transform = zoom_transform;
+                }
+            }
+            ui.ctx().set_transform_layer(zoom_layer_id, self.zoom_transform);
             {
                 let ui = &mut ui;
                 let screen_rect = ui.ctx().content_rect();
@@ -528,6 +566,29 @@ impl Context {
 
     pub fn reset_panniing(&mut self, panning: egui::Vec2) {
         self.panning = panning;
+    }
+
+    /// Current zoom factor of the canvas (1.0 = 100%).
+    pub fn get_zoom(&self) -> f32 {
+        self.zoom_transform.scaling
+    }
+
+    /// Set the zoom factor of the canvas, keeping the current pan/center point fixed.
+    /// The value is clamped to the configured zoom range (see [`Context::set_zoom_range`]).
+    pub fn set_zoom(&mut self, zoom: f32) {
+        self.zoom_transform.scaling = zoom.clamp(self.zoom_min, self.zoom_max);
+    }
+
+    /// Set the allowed zoom range. Defaults to `0.1..=2.5`.
+    pub fn set_zoom_range(&mut self, min: f32, max: f32) {
+        self.zoom_min = min;
+        self.zoom_max = max;
+        self.zoom_transform.scaling = self.zoom_transform.scaling.clamp(min, max);
+    }
+
+    /// Reset the zoom factor to 1.0 without changing panning.
+    pub fn reset_zoom(&mut self) {
+        self.zoom_transform = TSTransform::from_translation(self.zoom_transform.translation);
     }
 
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
