@@ -184,6 +184,9 @@ impl Context {
 
         {
             ui.set_min_size(self.canvas_rect_screen_space.size());
+            // Keep a painter for the outer (non-zoomed) layer so the canvas border can
+            // be drawn flush with the widget bounds regardless of the current zoom.
+            let outer_painter = ui.painter().clone();
             let zoom_layer_id =
                 egui::LayerId::new(ui.layer_id().order, ui.id().with("egui_nodes_zoom_layer"));
             ui.ctx().set_sublayer(ui.layer_id(), zoom_layer_id);
@@ -229,15 +232,22 @@ impl Context {
             {
                 let ui = &mut ui;
                 let screen_rect = ui.ctx().content_rect();
-                ui.set_clip_rect(self.canvas_rect_screen_space.intersect(screen_rect));
+                // The canvas rect is in local (pre-zoom-transform) space, but at zoom
+                // levels other than 1.0 the area actually visible on screen covers a
+                // different local-space region (larger when zoomed out, smaller when
+                // zoomed in). Compute that region so the background fill, grid lines,
+                // and clip rect all cover the full visible viewport instead of only the
+                // original, unscaled canvas rect.
+                let visible_rect = self.zoom_transform.inverse() * self.canvas_rect_screen_space;
+                ui.set_clip_rect(visible_rect.intersect(screen_rect));
                 ui.painter().rect_filled(
-                    self.canvas_rect_screen_space,
+                    visible_rect,
                     0.0,
                     self.style.colors[ColorStyle::GridBackground as usize],
                 );
 
                 if (self.style.flags & StyleFlags::GridLines as usize) != 0 {
-                    self.draw_grid(self.canvas_rect_screen_space.size(), ui);
+                    self.draw_grid(visible_rect, ui);
                 }
 
                 let links = links.into_iter().collect::<Vec<_>>();
@@ -347,7 +357,7 @@ impl Context {
                 self.links.update();
                 self.group_pool_update();
             }
-            ui.painter().rect_stroke(
+            outer_painter.rect_stroke(
                 self.canvas_rect_screen_space,
                 0.0,
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
@@ -848,29 +858,39 @@ impl Context {
         }
     }
 
-    fn draw_grid(&self, canvas_size: egui::Vec2, ui: &mut egui::Ui) {
-        let mut x = self.panning.x.rem_euclid(self.style.grid_spacing);
-        while x < canvas_size.x {
+    fn draw_grid(&self, rect: egui::Rect, ui: &mut egui::Ui) {
+        let spacing = self.style.grid_spacing;
+        // Work in "editor space" (screen space minus the canvas origin) since that's
+        // the space `self.panning` and `editor_space_to_screen_space` operate in. Using
+        // the passed-in rect (rather than always starting at the canvas origin) lets
+        // this cover whatever region is actually visible, which changes with zoom.
+        let editor_min = rect.min - self.canvas_origin_screen_space;
+        let editor_max = rect.max - self.canvas_origin_screen_space;
+
+        let phase_x = self.panning.x.rem_euclid(spacing);
+        let mut x = editor_min.x + (phase_x - editor_min.x).rem_euclid(spacing);
+        while x < editor_max.x {
             ui.painter().line_segment(
                 [
-                    self.editor_space_to_screen_space([x, 0.0].into()),
-                    self.editor_space_to_screen_space([x, canvas_size.y].into()),
+                    self.editor_space_to_screen_space([x, editor_min.y].into()),
+                    self.editor_space_to_screen_space([x, editor_max.y].into()),
                 ],
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
             );
-            x += self.style.grid_spacing;
+            x += spacing;
         }
 
-        let mut y = self.panning.y.rem_euclid(self.style.grid_spacing);
-        while y < canvas_size.y {
+        let phase_y = self.panning.y.rem_euclid(spacing);
+        let mut y = editor_min.y + (phase_y - editor_min.y).rem_euclid(spacing);
+        while y < editor_max.y {
             ui.painter().line_segment(
                 [
-                    self.editor_space_to_screen_space([0.0, y].into()),
-                    self.editor_space_to_screen_space([canvas_size.x, y].into()),
+                    self.editor_space_to_screen_space([editor_min.x, y].into()),
+                    self.editor_space_to_screen_space([editor_max.x, y].into()),
                 ],
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
             );
-            y += self.style.grid_spacing;
+            y += spacing;
         }
     }
 
