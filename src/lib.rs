@@ -47,6 +47,7 @@
 
 use educe::Educe;
 use egui::UiBuilder;
+use egui::emath::TSTransform;
 use std::collections::HashMap;
 
 mod group;
@@ -131,6 +132,16 @@ pub struct Context {
 
     panning: egui::Vec2,
 
+    /// The transform applied to the whole canvas layer to implement zooming.
+    /// `zoom_transform.scaling` is the current zoom factor.
+    #[educe(Default(expression = TSTransform::IDENTITY))]
+    zoom_transform: TSTransform,
+    /// Minimum/maximum allowed zoom factor.
+    #[educe(Default(expression = 0.1))]
+    zoom_min: f32,
+    #[educe(Default(expression = 2.5))]
+    zoom_max: f32,
+
     selected_node_indices: Vec<usize>,
     selected_link_indices: Vec<usize>,
 
@@ -173,10 +184,18 @@ impl Context {
 
         {
             ui.set_min_size(self.canvas_rect_screen_space.size());
+            // Keep a painter for the outer (non-zoomed) layer so the canvas border can
+            // be drawn flush with the widget bounds regardless of the current zoom.
+            let outer_painter = ui.painter().clone();
+            let zoom_layer_id =
+                egui::LayerId::new(ui.layer_id().order, ui.id().with("egui_nodes_zoom_layer"));
+            ui.ctx().set_sublayer(ui.layer_id(), zoom_layer_id);
             let mut ui = ui.new_child(
                 UiBuilder::new()
+                    .layer_id(zoom_layer_id)
                     .max_rect(self.canvas_rect_screen_space)
-                    .layout(egui::Layout::top_down(egui::Align::Center)),
+                    .layout(egui::Layout::top_down(egui::Align::Center))
+                    .sense(egui::Sense::click_and_drag()),
             );
             // Claim the whole-canvas click/drag sense *before* any node/pin/attribute
             // widgets are added below. egui's hit-test prefers the most-recently-registered
@@ -188,18 +207,59 @@ impl Context {
                 ui.id().with("Input"),
                 egui::Sense::click_and_drag(),
             );
+
+            // Handle zooming: scroll wheel while hovering the canvas zooms in/out,
+            // anchored on the pointer position so the point under the cursor stays put.
+            // NOTE: we deliberately use the raw pointer position + a plain rect-contains
+            // check here instead of `response.hover_pos()`. The latter is only `Some`
+            // when this specific widget "wins" hover for the pixel (i.e. no node/pin/
+            // attribute widget on top of it), so scrolling while the pointer is over a
+            // node would otherwise silently drop the scroll delta and make zoom feel
+            // laggy / intermittent.
+            if let Some(global_pointer_pos) = ui.input(|i| i.pointer.latest_pos())
+                && self.canvas_rect_screen_space.contains(global_pointer_pos)
+            {
+                let scroll = ui.input(|i| i.smooth_scroll_delta.y);
+                if scroll != 0.0 {
+                    let pointer_pos = self.zoom_transform.inverse() * global_pointer_pos;
+                    let mut zoom_transform = self.zoom_transform;
+                    let zoom_delta = (scroll * 0.0015).exp();
+                    let zoom_delta = zoom_delta.clamp(
+                        self.zoom_min / zoom_transform.scaling,
+                        self.zoom_max / zoom_transform.scaling,
+                    );
+                    zoom_transform = zoom_transform
+                        * TSTransform::from_translation(pointer_pos.to_vec2())
+                        * TSTransform::from_scaling(zoom_delta)
+                        * TSTransform::from_translation(-pointer_pos.to_vec2());
+                    zoom_transform.scaling =
+                        zoom_transform.scaling.clamp(self.zoom_min, self.zoom_max);
+                    self.zoom_transform = zoom_transform;
+                }
+            }
+            ui.ctx().set_transform_layer(zoom_layer_id, self.zoom_transform);
             {
                 let ui = &mut ui;
                 let screen_rect = ui.ctx().content_rect();
-                ui.set_clip_rect(self.canvas_rect_screen_space.intersect(screen_rect));
+                // The canvas rect is in local (pre-zoom-transform) space, but at zoom
+                // levels other than 1.0 the area actually visible on screen covers a
+                // different local-space region (larger when zoomed out, smaller when
+                // zoomed in). Compute that region so the background fill, grid lines,
+                // and clip rect all cover the full visible viewport instead of only the
+                // original, unscaled canvas rect. `screen_rect` is in real (global,
+                // untransformed) screen space, so it must be converted into the same
+                // local space before intersecting with it.
+                let visible_rect = self.zoom_transform.inverse() * self.canvas_rect_screen_space;
+                let screen_rect_local = self.zoom_transform.inverse() * screen_rect;
+                ui.set_clip_rect(visible_rect.intersect(screen_rect_local));
                 ui.painter().rect_filled(
-                    self.canvas_rect_screen_space,
+                    visible_rect,
                     0.0,
                     self.style.colors[ColorStyle::GridBackground as usize],
                 );
 
                 if (self.style.flags & StyleFlags::GridLines as usize) != 0 {
-                    self.draw_grid(self.canvas_rect_screen_space.size(), ui);
+                    self.draw_grid(visible_rect, ui);
                 }
 
                 let links = links.into_iter().collect::<Vec<_>>();
@@ -309,7 +369,7 @@ impl Context {
                 self.links.update();
                 self.group_pool_update();
             }
-            ui.painter().rect_stroke(
+            outer_painter.rect_stroke(
                 self.canvas_rect_screen_space,
                 0.0,
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
@@ -528,6 +588,29 @@ impl Context {
 
     pub fn reset_panniing(&mut self, panning: egui::Vec2) {
         self.panning = panning;
+    }
+
+    /// Current zoom factor of the canvas (1.0 = 100%).
+    pub fn get_zoom(&self) -> f32 {
+        self.zoom_transform.scaling
+    }
+
+    /// Set the zoom factor of the canvas, keeping the current pan/center point fixed.
+    /// The value is clamped to the configured zoom range (see [`Context::set_zoom_range`]).
+    pub fn set_zoom(&mut self, zoom: f32) {
+        self.zoom_transform.scaling = zoom.clamp(self.zoom_min, self.zoom_max);
+    }
+
+    /// Set the allowed zoom range. Defaults to `0.1..=2.5`.
+    pub fn set_zoom_range(&mut self, min: f32, max: f32) {
+        self.zoom_min = min;
+        self.zoom_max = max;
+        self.zoom_transform.scaling = self.zoom_transform.scaling.clamp(min, max);
+    }
+
+    /// Reset the zoom factor to 1.0 without changing panning.
+    pub fn reset_zoom(&mut self) {
+        self.zoom_transform = TSTransform::from_translation(self.zoom_transform.translation);
     }
 
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
@@ -787,29 +870,39 @@ impl Context {
         }
     }
 
-    fn draw_grid(&self, canvas_size: egui::Vec2, ui: &mut egui::Ui) {
-        let mut x = self.panning.x.rem_euclid(self.style.grid_spacing);
-        while x < canvas_size.x {
+    fn draw_grid(&self, rect: egui::Rect, ui: &mut egui::Ui) {
+        let spacing = self.style.grid_spacing;
+        // Work in "editor space" (screen space minus the canvas origin) since that's
+        // the space `self.panning` and `editor_space_to_screen_space` operate in. Using
+        // the passed-in rect (rather than always starting at the canvas origin) lets
+        // this cover whatever region is actually visible, which changes with zoom.
+        let editor_min = rect.min - self.canvas_origin_screen_space;
+        let editor_max = rect.max - self.canvas_origin_screen_space;
+
+        let phase_x = self.panning.x.rem_euclid(spacing);
+        let mut x = editor_min.x + (phase_x - editor_min.x).rem_euclid(spacing);
+        while x < editor_max.x {
             ui.painter().line_segment(
                 [
-                    self.editor_space_to_screen_space([x, 0.0].into()),
-                    self.editor_space_to_screen_space([x, canvas_size.y].into()),
+                    self.editor_space_to_screen_space([x, editor_min.y].into()),
+                    self.editor_space_to_screen_space([x, editor_max.y].into()),
                 ],
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
             );
-            x += self.style.grid_spacing;
+            x += spacing;
         }
 
-        let mut y = self.panning.y.rem_euclid(self.style.grid_spacing);
-        while y < canvas_size.y {
+        let phase_y = self.panning.y.rem_euclid(spacing);
+        let mut y = editor_min.y + (phase_y - editor_min.y).rem_euclid(spacing);
+        while y < editor_max.y {
             ui.painter().line_segment(
                 [
-                    self.editor_space_to_screen_space([0.0, y].into()),
-                    self.editor_space_to_screen_space([canvas_size.x, y].into()),
+                    self.editor_space_to_screen_space([editor_min.x, y].into()),
+                    self.editor_space_to_screen_space([editor_max.x, y].into()),
                 ],
                 (1.0, self.style.colors[ColorStyle::GridLine as usize]),
             );
-            y += self.style.grid_spacing;
+            y += spacing;
         }
     }
 
