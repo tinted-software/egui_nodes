@@ -197,6 +197,7 @@ impl Context {
                     .layout(egui::Layout::top_down(egui::Align::Center))
                     .sense(egui::Sense::click_and_drag()),
             );
+            ui.style_mut().interaction.selectable_labels = false;
             // Claim the whole-canvas click/drag sense *before* any node/pin/attribute
             // widgets are added below. egui's hit-test prefers the most-recently-registered
             // widget under the pointer; registering this background sense first ensures
@@ -290,15 +291,22 @@ impl Context {
                 }
             }
             let (pointer, modifiers) = ui.ctx().input(|i| (i.pointer.clone(), i.modifiers));
-            let mouse_pos = if let Some(mouse_pos) = response.hover_pos() {
-                self.mouse_in_canvas = true;
-                mouse_pos
+            let is_dragging = self.left_mouse_dragging
+                || self.alt_mouse_dragging
+                || self.click_interaction_type != ClickInteractionType::None;
+            let (mouse_pos, mouse_in_canvas) = if let Some(global_pos) = pointer.latest_pos() {
+                let in_canvas = self.canvas_rect_screen_space.contains(global_pos);
+                if in_canvas || is_dragging {
+                    (self.zoom_transform.inverse() * global_pos, true)
+                } else {
+                    (self.mouse_pos, false)
+                }
             } else {
-                self.mouse_in_canvas = false;
-                self.mouse_pos
+                (self.mouse_pos, false)
             };
             self.mouse_delta = mouse_pos - self.mouse_pos;
             self.mouse_pos = mouse_pos;
+            self.mouse_in_canvas = mouse_in_canvas;
             let left_mouse_clicked = pointer.button_down(egui::PointerButton::Primary);
             self.left_mouse_released =
                 (self.left_mouse_clicked || self.left_mouse_dragging) && !left_mouse_clicked;
@@ -711,7 +719,10 @@ impl Context {
                 let mut title_info = None;
                 if let Some(title) = title {
                     let titlebar_shape = ui.painter().add(egui::Shape::Noop);
-                    let response = ui.allocate_ui(ui.available_size(), title);
+                    let response = ui.allocate_ui(ui.available_size(), |ui| {
+                        ui.style_mut().interaction.selectable_labels = false;
+                        title(ui)
+                    });
                     let title_bar_content_rect = response.response.rect;
                     title_info.replace((titlebar_shape, title_bar_content_rect));
                     ui.add_space(title_space);
@@ -734,9 +745,7 @@ impl Context {
         }
         node.outline_shape.replace(outline_shape);
         node.rect = response.response.rect.expand2(node.layout_style.padding);
-        if response.response.hovered() || ui.rect_contains_pointer(node.rect) {
-            self.node_indices_overlapping_with_mouse.push(idx);
-        }
+        // Hover resolution is handled in `resolve_hovered_node` via `node.rect.contains(self.mouse_pos)`.
     }
 
     fn add_group(
@@ -782,7 +791,10 @@ impl Context {
             let padding = self.groups.pool[idx].layout_style.padding.x;
             ui.scope_builder(
                 UiBuilder::new().max_rect(title_bar_rect.shrink2(egui::vec2(padding, 0.0))),
-                title,
+                |ui| {
+                    ui.style_mut().interaction.selectable_labels = false;
+                    title(ui);
+                },
             );
         }
     }
@@ -976,24 +988,18 @@ impl Context {
     }
 
     fn resolve_hovered_node(&mut self) {
-        match self.node_indices_overlapping_with_mouse.len() {
-            0 => {
-                self.hovered_node_index.take();
-            }
-            1 => {
-                self.hovered_node_index.replace(self.node_indices_overlapping_with_mouse[0]);
-            }
-            _ => {
-                let mut largest_depth_idx = -1;
+        self.hovered_node_index.take();
+        self.node_indices_overlapping_with_mouse.clear();
 
-                for node_idx in self.node_indices_overlapping_with_mouse.iter() {
-                    for (depth_idx, depth_node_idx) in self.node_depth_order.iter().enumerate() {
-                        if *depth_node_idx == *node_idx && depth_idx as isize > largest_depth_idx {
-                            largest_depth_idx = depth_idx as isize;
-                            self.hovered_node_index.replace(*node_idx);
-                        }
-                    }
-                }
+        for idx in self.node_depth_order.iter().rev() {
+            let idx = *idx;
+            if !self.nodes.in_use[idx] {
+                continue;
+            }
+            if self.nodes.pool[idx].rect.contains(self.mouse_pos) {
+                self.hovered_node_index.replace(idx);
+                self.node_indices_overlapping_with_mouse.push(idx);
+                return;
             }
         }
     }
