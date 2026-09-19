@@ -25,7 +25,7 @@ jobs:
         uses: rust-lang/crates-io-auth-action@v1
         id: auth
       - name: Run release-plz
-        uses: release-plz/action@a80d79efe0a195618acb02a4089d55fe74d2505f # v0.5
+        uses: release-plz/action@d6c56271d640b6c1b61d1e00593641c400a9f4bd # v0.5
         with:
           command: release
         env:
@@ -51,7 +51,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       - name: Run release-plz
-        uses: release-plz/action@a80d79efe0a195618acb02a4089d55fe74d2505f # v0.5
+        uses: release-plz/action@d6c56271d640b6c1b61d1e00593641c400a9f4bd # v0.5
         with:
           command: release-pr
         env:
