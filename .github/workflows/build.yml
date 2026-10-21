@@ -11,7 +11,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: clippy, rustfmt
-      - uses: wild-linker/action@dc926c45399e1842cf81e604f52bdf0ad86a0c09 # v0.10.0
+      - uses: rui314/setup-mold@da13e0b42e392e3a45d1215033a2270b849d7d36
       - name: Build and test
         run: cargo test --all-features
       - name: Lint
