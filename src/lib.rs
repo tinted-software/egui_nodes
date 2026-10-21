@@ -185,7 +185,7 @@ impl Context {
             // ownership of clicks landing on them instead of this canvas catch-all.
             let response = ui.interact(
                 self.canvas_rect_screen_space,
-                ui.id().with("Input"),
+                ui.scope_id().with("Input"),
                 egui::Sense::click_and_drag(),
             );
             {
