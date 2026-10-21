@@ -187,8 +187,10 @@ impl Context {
             // Keep a painter for the outer (non-zoomed) layer so the canvas border can
             // be drawn flush with the widget bounds regardless of the current zoom.
             let outer_painter = ui.painter().clone();
-            let zoom_layer_id =
-                egui::LayerId::new(ui.layer_id().order, ui.id().with("egui_nodes_zoom_layer"));
+            let zoom_layer_id = egui::LayerId::new(
+                ui.layer_id().order,
+                ui.scope_id().with("egui_nodes_zoom_layer"),
+            );
             ui.ctx().set_sublayer(ui.layer_id(), zoom_layer_id);
             let mut ui = ui.new_child(
                 UiBuilder::new()
