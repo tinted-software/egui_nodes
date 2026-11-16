@@ -5,7 +5,9 @@
     "enabled": true,
     "automerge": true
   },
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "schedule": ["every weekend"],
   "packageRules": [
     {
